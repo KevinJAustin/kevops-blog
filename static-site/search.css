@@ -2,7 +2,12 @@
 
 /* Hide empty gh-head-actions div to prevent pink box */
 .gh-head-actions:empty {
-    display: none;
+    display: none !important;
+}
+
+/* Additional fix for gh-head-actions styling */
+.gh-head-actions {
+    background: none !important;
 }
 
 .search-trigger {
