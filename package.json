@@ -1,0 +1,32 @@
+{
+  "name": "ghost-static-export",
+  "version": "1.0.0",
+  "description": "Ghost blog with static site generation for GitHub Pages",
+  "main": "static-export.js",
+  "scripts": {
+    "dev": "docker-compose up -d",
+    "dev:stop": "docker-compose down",
+    "dev:logs": "docker-compose logs -f ghost",
+    "export:static": "node static-export.js",
+    "export:local": "npm run dev && sleep 10 && npm run export:static && npm run dev:stop",
+    "build": "npm run export:static",
+    "clean": "rm -rf static-site"
+  },
+  "dependencies": {},
+  "devDependencies": {},
+  "keywords": [
+    "ghost",
+    "blog",
+    "static-site",
+    "github-pages"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yourusername/ghost-blog.git"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
