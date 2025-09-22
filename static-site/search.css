@@ -8,6 +8,22 @@
 /* Additional fix for gh-head-actions styling */
 .gh-head-actions {
     background: none !important;
+    background-color: transparent !important;
+    background-image: none !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+/* More specific targeting */
+.gh-head .gh-head-actions {
+    background: transparent !important;
+    background-color: transparent !important;
+}
+
+/* Override any brand styling */
+body .gh-head .gh-head-actions {
+    background: transparent !important;
+    background-color: transparent !important;
 }
 
 .search-trigger {
