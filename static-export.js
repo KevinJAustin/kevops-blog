@@ -49,11 +49,30 @@ async function main() {
   // Wait for Ghost to be ready
   await waitForGhost();
   
-  // Clean output directory
+  // Clean output directory but preserve custom search files
+  const searchFilesToPreserve = ['search.js', 'search.css'];
+  const preservedFiles = {};
+  
   if (fs.existsSync(OUTPUT_DIR)) {
+    // Save custom search files before cleaning
+    for (const file of searchFilesToPreserve) {
+      const filePath = path.join(OUTPUT_DIR, file);
+      if (fs.existsSync(filePath)) {
+        preservedFiles[file] = fs.readFileSync(filePath, 'utf8');
+        console.log(`Preserving custom file: ${file}`);
+      }
+    }
+    
     execSync(`rm -rf ${OUTPUT_DIR}`);
   }
   fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+  
+  // Restore preserved files
+  for (const [fileName, content] of Object.entries(preservedFiles)) {
+    const filePath = path.join(OUTPUT_DIR, fileName);
+    fs.writeFileSync(filePath, content);
+    console.log(`Restored custom file: ${fileName}`);
+  }
   
   console.log('Exporting site with wget...');
   
