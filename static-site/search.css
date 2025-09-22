@@ -1,4 +1,10 @@
 /* Search functionality styles */
+
+/* Hide empty gh-head-actions div to prevent pink box */
+.gh-head-actions:empty {
+    display: none;
+}
+
 .search-trigger {
     background: none;
     border: 1px solid var(--ghost-accent-color, #FF1A75);
