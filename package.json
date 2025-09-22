@@ -7,6 +7,7 @@
     "dev": "docker-compose up -d",
     "dev:stop": "docker-compose down",
     "dev:logs": "docker-compose logs -f ghost",
+    "export": "npm run export:local",
     "export:static": "node static-export.js",
     "export:local": "npm run dev && sleep 10 && npm run export:static && npm run dev:stop",
     "build": "npm run export:static",

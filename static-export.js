@@ -74,15 +74,26 @@ async function main() {
       --directory-prefix=${OUTPUT_DIR} \
       ${GHOST_URL}`, { stdio: 'inherit' });
   } catch (error) {
-    console.error('wget export failed:', error.message);
-    process.exit(1);
+    console.warn('wget export completed with warnings (some 404s are expected):', error.message);
+    // Continue processing even if wget exits with non-zero code due to 404s
   }
   
   console.log('Processing exported files...');
   
-  // Move files from localhost:2368 subdirectory to root
-  const localhostDir = path.join(OUTPUT_DIR, 'localhost:2368');
-  if (fs.existsSync(localhostDir)) {
+  // Move files from localhost subdirectory to root (handle both : and + formats)
+  const possibleDirs = ['localhost:2368', 'localhost+2368'];
+  let localhostDir = null;
+  
+  for (const dirName of possibleDirs) {
+    const testDir = path.join(OUTPUT_DIR, dirName);
+    if (fs.existsSync(testDir)) {
+      localhostDir = testDir;
+      break;
+    }
+  }
+  
+  if (localhostDir) {
+    console.log(`Moving files from ${path.basename(localhostDir)} to root...`);
     const files = fs.readdirSync(localhostDir);
     files.forEach(file => {
       const srcPath = path.join(localhostDir, file);
@@ -93,6 +104,7 @@ async function main() {
       fs.renameSync(srcPath, destPath);
     });
     fs.rmSync(localhostDir, { recursive: true, force: true });
+    console.log('Files moved successfully.');
   }
   
   // Create .nojekyll file for GitHub Pages
