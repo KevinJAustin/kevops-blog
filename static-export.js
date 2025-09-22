@@ -2,6 +2,7 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const http = require('http');
+const { JSDOM } = require('jsdom');
 
 // Configuration
 const GHOST_URL = 'http://localhost:2368';
@@ -134,9 +135,111 @@ async function main() {
 </html>`);
   }
   
+  // Generate search index
+  console.log('Generating search index...');
+  generateSearchIndex();
+  
   console.log('Static site export completed successfully!');
   console.log(`Files exported to: ${OUTPUT_DIR}`);
   console.log('Ready for GitHub Pages deployment.');
+}
+
+// Function to generate search index
+function generateSearchIndex() {
+  const searchData = [];
+  
+  // Find all HTML files
+  function findHtmlFiles(dir) {
+    const files = [];
+    const items = fs.readdirSync(dir);
+    
+    for (const item of items) {
+      const fullPath = path.join(dir, item);
+      const stat = fs.statSync(fullPath);
+      
+      if (stat.isDirectory() && !item.startsWith('.') && item !== 'public' && item !== 'assets') {
+        files.push(...findHtmlFiles(fullPath));
+      } else if (stat.isFile() && item.endsWith('.html') && item !== '404.html') {
+        files.push(fullPath);
+      }
+    }
+    
+    return files;
+  }
+  
+  const htmlFiles = findHtmlFiles(OUTPUT_DIR);
+  
+  for (const filePath of htmlFiles) {
+    try {
+      const content = fs.readFileSync(filePath, 'utf8');
+      const dom = new JSDOM(content);
+      const document = dom.window.document;
+      
+      // Extract metadata
+      const title = document.querySelector('title')?.textContent?.trim() || '';
+      const description = document.querySelector('meta[name="description"]')?.getAttribute('content') || '';
+      const excerpt = document.querySelector('meta[property="og:description"]')?.getAttribute('content') || description;
+      
+      // Get relative URL
+      let url = path.relative(OUTPUT_DIR, filePath);
+      if (url === 'index.html') {
+        url = '/';
+      } else if (url.endsWith('/index.html')) {
+        url = '/' + url.replace('/index.html', '/');
+      } else if (url.endsWith('.html')) {
+        url = '/' + url;
+      }
+      
+      // Extract tags from meta keywords or article tags
+      const keywords = document.querySelector('meta[name="keywords"]')?.getAttribute('content') || '';
+      const tags = keywords ? keywords.split(',').map(tag => tag.trim()).filter(Boolean) : [];
+      
+      // Extract date
+      const dateElement = document.querySelector('time[datetime]');
+      const date = dateElement ? dateElement.getAttribute('datetime') : new Date().toISOString();
+      
+      // Extract main content text (excluding navigation, footer, etc.)
+      const mainContent = document.querySelector('main, article, .post-content, .content');
+      let textContent = '';
+      if (mainContent) {
+        // Remove script and style elements
+        const scripts = mainContent.querySelectorAll('script, style');
+        scripts.forEach(el => el.remove());
+        textContent = mainContent.textContent || '';
+      } else {
+        // Fallback to body content
+        const body = document.querySelector('body');
+        if (body) {
+          const scripts = body.querySelectorAll('script, style, nav, footer, .nav, .footer');
+          scripts.forEach(el => el.remove());
+          textContent = body.textContent || '';
+        }
+      }
+      
+      // Clean up text content
+      textContent = textContent.replace(/\s+/g, ' ').trim();
+      
+      // Skip if no meaningful content
+      if (!title && !textContent) continue;
+      
+      searchData.push({
+        title: title || 'Untitled',
+        url: url,
+        excerpt: excerpt || textContent.substring(0, 200) + (textContent.length > 200 ? '...' : ''),
+        content: textContent,
+        tags: tags,
+        date: date
+      });
+      
+    } catch (error) {
+      console.warn(`Error processing ${filePath}:`, error.message);
+    }
+  }
+  
+  // Write search index
+  const searchIndexPath = path.join(OUTPUT_DIR, 'search.json');
+  fs.writeFileSync(searchIndexPath, JSON.stringify(searchData, null, 2));
+  console.log(`Generated search index with ${searchData.length} entries`);
 }
 
 // Run the export

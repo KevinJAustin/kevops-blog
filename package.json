@@ -13,7 +13,9 @@
     "build": "npm run export:static",
     "clean": "rm -rf static-site"
   },
-  "dependencies": {},
+  "dependencies": {
+    "jsdom": "^23.0.0"
+  },
   "devDependencies": {},
   "keywords": [
     "ghost",
