@@ -7,10 +7,6 @@ on:
   
   # Allow manual trigger
   workflow_dispatch:
-  
-  # Trigger on schedule (daily at 2 AM UTC) to catch new content
-  schedule:
-    - cron: '0 2 * * *'
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
@@ -31,65 +27,34 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          cache: 'npm'
-
-      - name: Install dependencies
+      - name: Verify static site exists
         run: |
-          npm install -g @tryghost/admin-api
-          sudo apt-get update
-          sudo apt-get install -y wget
-
-      - name: Start Ghost for export
-        run: |
-          # Start Ghost in background
-          docker-compose up -d
-          
-          # Wait for Ghost to be ready
-          echo "Waiting for Ghost to start..."
-          timeout 60 bash -c 'until curl -f http://localhost:2368; do sleep 2; done'
-          
-          # Give Ghost a moment to fully initialize
-          sleep 10
-
-      - name: Export static site
-        run: |
-          # Create static export directory
-          mkdir -p static-site
-          
-          # Use wget to create static export
-          wget \
-            --recursive \
-            --page-requisites \
-            --html-extension \
-            --convert-links \
-            --restrict-file-names=windows \
-            --domains localhost \
-            --no-parent \
-            --directory-prefix=static-site \
-            --exclude-directories=ghost \
-            http://localhost:2368/
-          
-          # Move files from subdirectory to root
-          if [ -d "static-site/localhost:2368" ]; then
-            mv static-site/localhost:2368/* static-site/
-            rm -rf static-site/localhost:2368
+          if [ ! -d "static-site" ]; then
+            echo "Error: static-site directory not found!"
+            echo "Please generate the static site locally first using:"
+            echo "  docker-compose up -d"
+            echo "  npm run export"
+            exit 1
           fi
           
-          # Create .nojekyll file for GitHub Pages
-          touch static-site/.nojekyll
-          
-          # Create CNAME file if custom domain is set
-          if [ ! -z "${{ vars.GITHUB_PAGES_DOMAIN }}" ]; then
-            echo "${{ vars.GITHUB_PAGES_DOMAIN }}" > static-site/CNAME
-          fi
-          
-          # List exported files for debugging
-          echo "Exported files:"
+          echo "Static site directory found. Contents:"
           ls -la static-site/
+          
+          # Verify essential files exist
+          if [ ! -f "static-site/index.html" ]; then
+            echo "Error: index.html not found in static-site directory!"
+            exit 1
+          fi
+          
+          if [ ! -f "static-site/CNAME" ]; then
+            echo "Warning: CNAME file not found, creating one for www.kevops.co.uk"
+            echo "www.kevops.co.uk" > static-site/CNAME
+          fi
+          
+          if [ ! -f "static-site/.nojekyll" ]; then
+            echo "Creating .nojekyll file for GitHub Pages"
+            touch static-site/.nojekyll
+          fi
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -98,10 +63,6 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: './static-site'
-
-      - name: Stop Ghost
-        if: always()
-        run: docker-compose down
 
   # Deployment job
   deploy:
